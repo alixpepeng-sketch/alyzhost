@@ -61,6 +61,7 @@ export const commands = {
   accallmem,
   tagall,
   swgc,
+  upswgc: swgc,
   jpmv1,
   asahotak,
 };
