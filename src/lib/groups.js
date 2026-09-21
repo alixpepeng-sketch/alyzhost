@@ -13,32 +13,44 @@ import {
 } from '../utils.js';
 
 /* ------------------------------------------------------------------ */
-/* Pengaturan per grup: SESSION_DIR/<nomor>/groups.json                */
-/* { "<jid grup>": { "antilink": true, "adminonly": false } }          */
+/* Pengaturan per grup: SESSION_DIR/<nomor>/groups.json */
+/* { "<jid grup>": { "antilink": true, "adminonly": false } } */
 /* ------------------------------------------------------------------ */
 
 const fileOf = (sessionDir) => path.join(sessionDir, 'groups.json');
 
 function loadAll(sessionDir) {
   const data = readJson(fileOf(sessionDir), {});
-  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  return data && typeof data === 'object' &&!Array.isArray(data)? data : {};
 }
 
 export function getGroupSettings(sessionDir, groupJid) {
-  return { antilink: false, adminonly: false, ...(loadAll(sessionDir)[groupJid] || {}) };
+  return {
+    antilink: false,
+    adminonly: false,
+    accLimit: null, // buat.setacc
+    accAuto: false, // buat.acc on/off
+   ...(loadAll(sessionDir)[groupJid] || {})
+  };
 }
 
 export function setGroupSetting(sessionDir, groupJid, key, value) {
   const all = loadAll(sessionDir);
-  all[groupJid] = { ...(all[groupJid] || {}), [key]: value };
+  all[groupJid] = {...(all[groupJid] || {}), [key]: value };
+  writeJson(fileOf(sessionDir), all);
+}
+
+// INI YANG BIKIN ERROR TADI - SEKARANG UDAH ADA
+export function saveGroupSettings(sessionDir, groupJid, settings) {
+  const all = loadAll(sessionDir);
+  all[groupJid] = {...(all[groupJid] || {}),...settings };
   writeJson(fileOf(sessionDir), all);
 }
 
 /* ------------------------------------------------------------------ */
-/* Info grup dan hak akses                                             */
+/* Info grup dan hak akses */
 /* ------------------------------------------------------------------ */
 
-// Metadata grup + status admin pengirim dan bot. Owner bot selalu dianggap admin.
 export async function getGroupInfo(sock, m, sessionDir) {
   const jid = m.key.remoteJid;
   const meta = await sock.groupMetadata(jid);
@@ -57,8 +69,6 @@ export async function getGroupInfo(sock, m, sessionDir) {
   };
 }
 
-// Dipakai perintah khusus admin grup. Mengembalikan info grup, atau null
-// (setelah membalas alasannya) kalau syaratnya tidak terpenuhi.
 export async function requireGroupAdmin(sock, m, sessionDir, { botAdmin = false } = {}) {
   if (!isGroupJid(m.key.remoteJid)) {
     await reply(sock, m, 'Perintah ini hanya bisa dipakai di grup.');
@@ -78,7 +88,7 @@ export async function requireGroupAdmin(sock, m, sessionDir, { botAdmin = false 
     await reply(sock, m, 'Perintah ini khusus admin grup.');
     return null;
   }
-  if (botAdmin && !info.isBotAdmin) {
+  if (botAdmin &&!info.isBotAdmin) {
     await reply(sock, m, 'Jadikan bot sebagai admin grup terlebih dahulu.');
     return null;
   }
@@ -86,7 +96,7 @@ export async function requireGroupAdmin(sock, m, sessionDir, { botAdmin = false 
 }
 
 /* ------------------------------------------------------------------ */
-/* Antilink                                                            */
+/* Antilink */
 /* ------------------------------------------------------------------ */
 
 const LINK_REGEX = new RegExp(
@@ -100,7 +110,6 @@ const LINK_REGEX = new RegExp(
 
 export const containsLink = (text) => LINK_REGEX.test(String(text || ''));
 
-// Hapus pesan berisi link dari non-admin. Mengembalikan true kalau pesan dihapus.
 export async function enforceAntilink(sock, m, sessionDir, text) {
   const jid = m.key.remoteJid;
   if (!containsLink(text)) return false;
@@ -112,8 +121,7 @@ export async function enforceAntilink(sock, m, sessionDir, text) {
   } catch {
     return false;
   }
-  // Admin boleh kirim link. Tanpa hak admin, bot tidak bisa menghapus pesan orang lain.
-  if (info.isAdmin || !info.isBotAdmin) return false;
+  if (info.isAdmin ||!info.isBotAdmin) return false;
 
   try {
     await sock.sendMessage(jid, { delete: m.key });
@@ -125,11 +133,11 @@ export async function enforceAntilink(sock, m, sessionDir, text) {
   const sender = m.key.participantAlt || m.key.participant;
   if (sender) {
     await sock
-      .sendMessage(jid, {
+     .sendMessage(jid, {
         text: `Link tidak diperbolehkan di grup ini, @${numberOf(sender)}.`,
         mentions: [sender],
       })
-      .catch(() => {});
+     .catch(() => {});
   }
   return true;
 }
