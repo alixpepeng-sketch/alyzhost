@@ -12,12 +12,14 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.15.2",
     "@whiskeysockets/baileys": "latest",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "pino": "^9.6.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "yt-search": "^2.13.0"
   },
   "optionalDependencies": {
     "ffmpeg-static": "^5.2.0"
