@@ -6,9 +6,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildBratSvg } from '../lib/brat-svg.js';
 import { argText, getQuoted, reply } from '../utils.js';
+import { logger } from '../logger.js';
 
 const execFileP = promisify(execFile);
 const MAX_LENGTH = 200;
+
+// Coba pakai ffmpeg-static, fallback ke ffmpeg sistem.
+let FFMPEG_BIN = 'ffmpeg';
+try {
+  const mod = await import('ffmpeg-static');
+  if (mod?.default) FFMPEG_BIN = mod.default;
+} catch {
+  // optional dependency tidak terpasang, pakai ffmpeg sistem
+}
 
 async function renderFrame(text) {
   return sharp(Buffer.from(buildBratSvg(text))).png().toBuffer();
@@ -16,27 +26,28 @@ async function renderFrame(text) {
 
 async function hasFfmpeg() {
   try {
-    await execFileP('ffmpeg', ['-version']);
+    await execFileP(FFMPEG_BIN, ['-version']);
     return true;
   } catch {
     return false;
   }
 }
 
-// .bratvd <teks> - sticker brat versi video (animated webp).
-// Kalau ffmpeg tidak tersedia, otomatis fallback ke sticker statis.
 export default async function bratvd(sock, m, args) {
   let text = argText(args);
 
   if (!text) {
-    const quoted = getQuoted(m);
-    text = quoted?.conversation || quoted?.extendedTextMessage?.text || '';
+    const quoted = getQuoted(m.message);
+    text =
+      quoted?.conversation ||
+      quoted?.extendedTextMessage?.text ||
+      quoted?.imageMessage?.caption ||
+      quoted?.videoMessage?.caption ||
+      '';
   }
 
-  text = text.replace(/\s+/g, ' ').trim();
-  if (!text) {
-    return reply(sock, m, 'Masukkan teksnya. Contoh: .bratvd halo semuanya');
-  }
+  text = String(text).replace(/\s+/g, ' ').trim();
+  if (!text) return reply(sock, m, 'Masukkan teksnya. Contoh: .bratvd halo semuanya');
   if (text.length > MAX_LENGTH) {
     return reply(sock, m, `Teks terlalu panjang. Maksimal ${MAX_LENGTH} karakter.`);
   }
@@ -52,17 +63,11 @@ export default async function bratvd(sock, m, args) {
     const ffmpegReady = await hasFfmpeg();
 
     if (!ffmpegReady) {
-      // Fallback: sticker statis
       const webp = await sharp(frame).webp({ quality: 90 }).toBuffer();
-      return sock.sendMessage(
-        m.key.remoteJid,
-        { sticker: webp, packname: 'ALYZ', author: 'Alyz Bot' },
-        { quoted: m }
-      );
+      return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
     }
 
-    // Buat animated webp dari frame statis (efek gerak vertikal halus)
-    await execFileP('ffmpeg', [
+    await execFileP(FFMPEG_BIN, [
       '-y',
       '-loop', '1',
       '-i', framePath,
@@ -80,27 +85,13 @@ export default async function bratvd(sock, m, args) {
     ]);
 
     const webp = await fs.readFile(outPath);
-
-    return sock.sendMessage(
-      m.key.remoteJid,
-      {
-        sticker: webp,
-        packname: 'ALYZ',
-        author: 'Alyz Bot',
-      },
-      { quoted: m }
-    );
+    return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
   } catch (err) {
-    console.error('[bratvd]', err);
-    // Fallback terakhir: sticker statis
+    logger.error({ err }, 'bratvd gagal');
     try {
       const frame = await renderFrame(text);
       const webp = await sharp(frame).webp({ quality: 90 }).toBuffer();
-      return sock.sendMessage(
-        m.key.remoteJid,
-        { sticker: webp, packname: 'ALYZ', author: 'Alyz Bot' },
-        { quoted: m }
-      );
+      return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
     } catch {
       return reply(sock, m, 'Gagal membuat sticker brat video.');
     }
