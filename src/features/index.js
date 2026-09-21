@@ -21,6 +21,9 @@ import amsend from './amsend.js';
 import amverif from './amverif.js';
 import accallmem from './accallmem.js';
 import play from './play.js';
+import swgc from './swgc.js';
+import jpmv1 from './jpmv1.js';
+import asahotak from './asahotak.js';
 
 export const commands = {
   menu,
@@ -43,7 +46,6 @@ export const commands = {
   getpp,
   tiktok,
   tomp3,
-  tagall,
   toimg,
   setnamegroup,
   setdesk,
@@ -57,4 +59,8 @@ export const commands = {
   amsend,
   amverif,
   accallmem,
+  tagall,
+  swgc,
+  jpmv1,
+  asahotak,
 };
