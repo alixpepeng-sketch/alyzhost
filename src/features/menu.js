@@ -1,6 +1,6 @@
 export default async function menu(sock, m) {
   const text = `╭─── ALYZ BOT ───╮
-│ Total: 32 Fitur
+│ Total: 33 Fitur
 │
 │ ◦ GROUP
 │ • .tagall
@@ -17,6 +17,7 @@ export default async function menu(sock, m) {
 │ • .swgc
 │ • .jpmv1
 │ • .asahotak
+│ • .antios on/off
 │
 │ ◦ SETTINGS
 │ • .antilink
