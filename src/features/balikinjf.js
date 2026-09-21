@@ -1,38 +1,30 @@
-import { sleep } from '../utils.js';
-import yts from 'yt-search';
-import ytdl from '@distube/ytdl-core';
 import fs from 'fs';
-
-const SONG = 'Justfrend Kok Jatuh Suka Raim Laode';
+import path from 'path';
 
 export default async function balikinjf(sock, m) {
   const chat = m.key.remoteJid;
+  const audioPath = path.resolve('./media/jf.mp3');
 
   try {
-    await sock.sendMessage(chat, {
-      text: `Lah masih berharap sama justfrend? cuma justfrend kok jatuh cinta`
+    // 1. text prank nya
+    await sock.sendMessage(chat, { 
+      text: 'Loh masih berharap sama justfrend, justfrend kok jatuh cinta 😹' 
     }, { quoted: m });
 
-    await sleep(1000);
+    // 2. delay 1 detik
+    await new Promise(r => setTimeout(r, 1000));
 
-    const search = await yts(SONG);
-    const video = search.videos[0];
-
-    const fileName = `./jf_${Date.now()}.mp3`;
-    const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
-    const write = fs.createWriteStream(fileName);
-    stream.pipe(write);
-    await new Promise(res => write.on('finish', res));
-
+    // 3. kirim audio jf
     await sock.sendMessage(chat, {
-      audio: fs.readFileSync(fileName),
+      audio: fs.readFileSync(audioPath),
       mimetype: 'audio/mpeg',
-      fileName: `${SONG}.mp3`
+      ptt: false
     }, { quoted: m });
-
-    fs.unlinkSync(fileName);
 
   } catch (e) {
-    await sock.sendMessage(chat, { text: `Gagal: ${e.message}` }, { quoted: m });
+    // kalo mp3 belum ada, minimal text nya tetep kekirim
+    await sock.sendMessage(chat, { 
+      text: `Loh masih berharap sama justfrend, justfrend kok jatuh cinta 😹\n\n(mp3 belum ada di media/jf.mp3)` 
+    }, { quoted: m });
   }
-                                       }
+      }
