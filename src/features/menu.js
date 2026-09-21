@@ -5,6 +5,9 @@ export default async function menu(sock, m) {
 │ ◦ GROUP
 │ • .tagall
 │ • .accallmem
+│ • .setacc <jumlah>
+│ • .acc on/off
+│ • .acc / .acc cek
 │ • .kickall
 │ • .open
 │ • .close
@@ -31,7 +34,6 @@ export default async function menu(sock, m) {
 │ • .tiktok
 │ • .removebg
 │ • .brat
-│ • .bratvd
 │ • .getpp
 │ • .rvo
 │ • .toptv
