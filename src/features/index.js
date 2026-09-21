@@ -19,6 +19,7 @@ import toptv from './toptv.js';
 import { leave, setleave, setwelcome, welcome } from './welcome.js';
 import amsend from './amsend.js';
 import amverif from './amverif.js';
+import accallmem from './accallmem.js';
 
 // Kunci = nama perintah huruf kecil tanpa titik. Semua fitur menerima
 // (sock, m, args, sessionDir).
@@ -55,4 +56,5 @@ export const commands = {
   balikinjf,
   amsend,
   amverif,
+  accallmem,
 };
