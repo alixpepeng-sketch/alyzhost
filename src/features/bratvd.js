@@ -17,11 +17,12 @@ try {
   const mod = await import('ffmpeg-static');
   if (mod?.default) FFMPEG_BIN = mod.default;
 } catch {
-  // optional dependency tidak terpasang, pakai ffmpeg sistem
+  // ffmpeg-static tidak terpasang, pakai ffmpeg sistem
 }
 
 async function renderFrame(text) {
-  return sharp(Buffer.from(buildBratSvg(text))).png().toBuffer();
+  const svg = await buildBratSvg(text);
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 async function hasFfmpeg() {
@@ -33,6 +34,8 @@ async function hasFfmpeg() {
   }
 }
 
+// .bratvd <teks> - sticker brat versi video (animated webp).
+// Kalau ffmpeg tidak tersedia, otomatis fallback ke sticker statis.
 export default async function bratvd(sock, m, args) {
   let text = argText(args);
 
@@ -47,7 +50,9 @@ export default async function bratvd(sock, m, args) {
   }
 
   text = String(text).replace(/\s+/g, ' ').trim();
-  if (!text) return reply(sock, m, 'Masukkan teksnya. Contoh: .bratvd halo semuanya');
+  if (!text) {
+    return reply(sock, m, 'Masukkan teksnya. Contoh: .bratvd halo semuanya');
+  }
   if (text.length > MAX_LENGTH) {
     return reply(sock, m, `Teks terlalu panjang. Maksimal ${MAX_LENGTH} karakter.`);
   }
@@ -62,11 +67,13 @@ export default async function bratvd(sock, m, args) {
 
     const ffmpegReady = await hasFfmpeg();
 
+    // Fallback: sticker statis jika ffmpeg tidak tersedia
     if (!ffmpegReady) {
       const webp = await sharp(frame).webp({ quality: 90 }).toBuffer();
       return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
     }
 
+    // Buat animated webp dengan efek zoom halus
     await execFileP(FFMPEG_BIN, [
       '-y',
       '-loop', '1',
@@ -85,9 +92,11 @@ export default async function bratvd(sock, m, args) {
     ]);
 
     const webp = await fs.readFile(outPath);
+
     return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
   } catch (err) {
     logger.error({ err }, 'bratvd gagal');
+    // Fallback terakhir: sticker statis
     try {
       const frame = await renderFrame(text);
       const webp = await sharp(frame).webp({ quality: 90 }).toBuffer();
