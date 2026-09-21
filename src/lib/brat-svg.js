@@ -1,6 +1,5 @@
 // Membuat SVG sticker brat: latar putih, teks hitam tebal San Francisco,
 // emoji gaya iPhone (Twemoji inline base64), watermark "ALYZ BOT" di bawah.
-// Fungsi murni tanpa dependency tambahan selain axios untuk fetch emoji.
 
 import axios from 'axios';
 
@@ -10,15 +9,12 @@ const WATERMARK_SPACE = 46;
 const CHAR_WIDTH = 0.62;
 const LINE_HEIGHT = 1.12;
 
-// Font San Francisco (fallback berlapis agar tetap mirip di semua OS/server)
 const FONT_FAMILY =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'San Francisco', 'Helvetica Neue', 'Inter', Arial, sans-serif";
 
-// CDN Twemoji untuk emoji bergaya iPhone (colorful, rounded)
 const TWEMOJI_CDN =
   'https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg';
 
-// Cache emoji base64 agar tidak fetch berulang kali
 const emojiCache = new Map();
 
 export function escapeXml(value) {
@@ -30,23 +26,21 @@ export function escapeXml(value) {
     .replace(/'/g, '&apos;');
 }
 
-// Deteksi apakah sebuah karakter adalah emoji.
 function isEmoji(ch) {
   const cp = ch.codePointAt(0);
   return (
-    (cp >= 0x1f300 && cp <= 0x1faff) || // simbol & pictographs utama
-    (cp >= 0x2600 && cp <= 0x27bf) ||   // simbol misc & dingbats
-    (cp >= 0x1f000 && cp <= 0x1f2ff) || // mahjong, domino, dll
-    (cp >= 0x2190 && cp <= 0x21ff) ||   // panah
-    (cp >= 0x2b00 && cp <= 0x2bff) ||   // simbol tambahan
-    cp === 0x2764 || // hati
-    cp === 0x2b50 || // bintang
-    cp === 0x2705 || // centang hijau
-    cp === 0x274c    // silang merah
+    (cp >= 0x1f300 && cp <= 0x1faff) ||
+    (cp >= 0x2600 && cp <= 0x27bf) ||
+    (cp >= 0x1f000 && cp <= 0x1f2ff) ||
+    (cp >= 0x2190 && cp <= 0x21ff) ||
+    (cp >= 0x2b00 && cp <= 0x2bff) ||
+    cp === 0x2764 ||
+    cp === 0x2b50 ||
+    cp === 0x2705 ||
+    cp === 0x274c
   );
 }
 
-// Pecah teks menjadi token: { type: 'text' | 'emoji', value }
 function tokenize(text) {
   const tokens = [];
   for (const ch of Array.from(text)) {
@@ -61,7 +55,6 @@ function tokenize(text) {
   return tokens;
 }
 
-// Konversi karakter emoji ke kode codepoint untuk URL Twemoji.
 function emojiToCodePoint(emoji) {
   const codes = [];
   for (const ch of emoji) {
@@ -71,8 +64,6 @@ function emojiToCodePoint(emoji) {
   return codes.join('-');
 }
 
-// Fetch emoji dari Twemoji, kembalikan sebagai data URL base64.
-// Hasil di-cache agar tidak fetch berulang.
 async function fetchEmojiAsDataUrl(emoji) {
   const code = emojiToCodePoint(emoji);
   if (emojiCache.has(code)) return emojiCache.get(code);
@@ -88,14 +79,12 @@ async function fetchEmojiAsDataUrl(emoji) {
     emojiCache.set(code, dataUrl);
     return dataUrl;
   } catch {
-    // Fallback ke URL langsung bila fetch gagal
     const fallback = `${TWEMOJI_CDN}/${code}.svg`;
     emojiCache.set(code, fallback);
     return fallback;
   }
 }
 
-// Bungkus kata menjadi beberapa baris berdasarkan maxChars.
 function wrapWords(words, maxChars) {
   const lines = [];
   let line = '';
@@ -120,7 +109,6 @@ function wrapWords(words, maxChars) {
   return lines;
 }
 
-// Hitung layout: cari ukuran font terbesar yang muat.
 export function layoutBrat(text) {
   const words = String(text).split(/\s+/).filter(Boolean);
   const longest = Math.max(1, ...words.map((w) => w.length));
@@ -140,7 +128,6 @@ export function layoutBrat(text) {
   return last;
 }
 
-// Hitung lebar sebuah token dalam satuan piksel.
 function measureToken(tok, size) {
   if (tok.type === 'emoji') return size * 1.05;
   return tok.value.length * size * CHAR_WIDTH;
@@ -210,11 +197,12 @@ export async function buildBratSvg(text) {
     }
   }
 
+  // Teks utama: hitam pekat (#000000) dengan fill-opacity penuh
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
       `width="${CANVAS}" height="${CANVAS}" viewBox="0 0 ${CANVAS} ${CANVAS}">`,
     `<rect width="${CANVAS}" height="${CANVAS}" fill="#ffffff"/>`,
-    `<g font-family="${FONT_FAMILY}" font-weight="900" fill="#000000">${tspansAll}</g>`,
+    `<g font-family="${FONT_FAMILY}" font-weight="900" fill="#000000" fill-opacity="1">${tspansAll}</g>`,
     emojiAll,
     `<text x="${CANVAS / 2}" y="${CANVAS - 20}" ` +
       `font-family="${FONT_FAMILY}" font-size="16" font-weight="700" ` +
@@ -222,4 +210,4 @@ export async function buildBratSvg(text) {
       `letter-spacing="3">ALYZ BOT</text>`,
     '</svg>',
   ].join('');
-}
+        }
