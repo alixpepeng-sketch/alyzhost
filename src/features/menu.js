@@ -1,6 +1,6 @@
 export default async function menu(sock, m) {
   const text = `╭─── ALYZ BOT ───╮
-│ Total: 28 Fitur
+│ Total: 30 Fitur
 │
 │ ◦ GROUP
 │ • .tagall
@@ -11,6 +11,9 @@ export default async function menu(sock, m) {
 │ • .setnamegroup
 │ • .setdesk
 │ • .revoke
+│ • .swgc
+│ • .jpmv1
+│ • .asahotak
 │
 │ ◦ SETTINGS
 │ • .antilink
@@ -34,7 +37,6 @@ export default async function menu(sock, m) {
 │ • .fotolive
 │ • .balikinjf
 │ • .play
-│ • .asahotak
 │
 │ ◦ OWNER
 │ • .selfmode
@@ -42,18 +44,8 @@ export default async function menu(sock, m) {
 │ • .amverif
 ╰───────────────╯`;
 
-  const fotoRandom = [
-    'https://files.catbox.moe/9nl9uk.jpg',
-    'https://files.catbox.moe/d3ogpu.webp',
-    'https://files.catbox.moe/pn21d8.jpg',
-    'https://files.catbox.moe/8ugm4j.jpg',
-    'https://files.catbox.moe/bbd849.jpg'
-  ];
-
-  const pick = fotoRandom[Math.floor(Math.random() * fotoRandom.length)];
-
   await sock.sendMessage(m.key.remoteJid, {
-    image: { url: pick },
+    image: { url: 'https://files.catbox.moe/c4rt8u.jpeg' },
     caption: "```" + text + "```"
   }, { quoted: m });
-                                     }
+}
