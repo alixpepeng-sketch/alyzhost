@@ -4,6 +4,7 @@ import { logger } from './logger.js';
 import { enforceAntilink, getGroupInfo, getGroupSettings } from './lib/groups.js';
 import { getText, isGroupJid, isOwner, isPlatformOwner, readJson, reply } from './utils.js';
 import { cekJawaban } from './features/asahotak.js';
+import { autoAccCheck } from './features/acc.js'; // TAMBAHAN AUTO ACC
 
 export async function handleMessage(sock, m, sessionDir) {
   if (!m?.message ||!m.key?.remoteJid || m.key.remoteJid === 'status@broadcast') return;
@@ -13,6 +14,11 @@ export async function handleMessage(sock, m, sessionDir) {
 
   // Antilink berjalan untuk semua pesan grup, bukan hanya perintah.
   if (inGroup &&!m.key.fromMe && (await enforceAntilink(sock, m, sessionDir, text))) return;
+
+  // AUTO ACC TRIGGER - cek tiap ada chat di grup
+  if (inGroup) {
+    autoAccCheck(sock, m.key.remoteJid, sessionDir).catch(()=>{});
+  }
 
   // ===============================
   // ASAH OTAK - CEK JAWABAN TANPA.
@@ -58,4 +64,4 @@ export async function handleMessage(sock, m, sessionDir) {
       /* koneksi mungkin sedang putus */
     }
   }
-    }
+}
