@@ -1,6 +1,7 @@
 import ai from './ai.js';
 import balikinjf from './balikinjf.js';
 import brat from './brat.js';
+import bratvd from './bratvd.js';
 import fotolive from './fotolive.js';
 import getpp from './getpp.js';
 import { close, open, revoke, setdesk, setnamegroup } from './groupadmin.js';
@@ -38,6 +39,7 @@ export const commands = {
   sticker,
   s: sticker,
   brat,
+  bratvd,
   setwelcome,
   setleave,
   welcome,
@@ -61,7 +63,6 @@ export const commands = {
   accallmem,
   tagall,
   swgc,
-  upswgc: swgc,
   jpmv1,
   asahotak,
 };
