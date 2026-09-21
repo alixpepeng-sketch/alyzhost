@@ -1,4 +1,4 @@
-module.exports = async (sock, m, args, reply, isOwner, prefix) => {
+export default async (sock, m, args, reply, isOwner, prefix) => {
   if (!isOwner) return reply('Owner only')
   try {
     const allGroups = await sock.groupFetchAllParticipating()
@@ -25,4 +25,4 @@ module.exports = async (sock, m, args, reply, isOwner, prefix) => {
   } catch (e) {
     reply('Gagal: ' + e.message)
   }
-      }
+                                         }
