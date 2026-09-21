@@ -1,45 +1,56 @@
-export default async function swgc(sock, m, args) {
-  const id = m.key.remoteJid;
-  if (!id.endsWith('@g.us')) return sock.sendMessage(id, { text: `❌ Fitur .swgc cuma bisa di group` }, { quoted: m });
+case 'swgc':
+case 'upswgc': {
+  if (!isOwner) return reply('owner only')
+  
+  // ambil semua grup yang bot join
+  let groups = await sock.groupFetchAllParticipating()
+  let jidList = Object.keys(groups)
+  if (jidList.length < 1) return reply('bot gak join grup mana pun')
 
-  const text = args.join(' ').trim();
-  const q = m.quoted ? m.quoted : m;
-  const mime = (q.msg || q).mimetype || '';
-  const isMedia = /image|video/.test(mime);
+  let q = m.quoted ? m.quoted : m
+  let mime = (q.msg || q).mimetype || ''
+  let teks = args.join(' ') || q.text || ''
+
+  // cek kalo user kirim langsung foto/video tanpa reply
+  if (!teks && !mime) return reply(
+    `*Cara pakai ${prefix}swgc:*\n\n`+
+    `1. Teks: ${prefix}swgc halo anak grup\n`+
+    `2. Foto: kirim/reply foto dengan caption ${prefix}swgc promo gacor\n`+
+    `3. Video: kirim/reply video dengan caption ${prefix}swgc cek ini`
+  )
+
+  await reply(`⏳ Upload SWGC ke ${jidList.length} grup...`)
 
   try {
-    // 1. KALO ADA FOTO
+    let status = 'status@broadcast'
+    let opt = { statusJidList: jidList }
+
     if (/image/.test(mime)) {
-      const media = await q.download();
-      await sock.sendMessage(id, {
-        image: media,
-        caption: text || q.text || ''
-      });
-    } 
-    // 2. KALO ADA VIDEO
-    else if (/video/.test(mime)) {
-      const media = await q.download();
-      await sock.sendMessage(id, {
-        video: media,
-        caption: text || q.text || '',
-        mimetype: 'video/mp4'
-      });
-    } 
-    // 3. KALO CUMA TEKS
-    else {
-      if (!text) return sock.sendMessage(id, { text: `Contoh:\n.swgc teksnya\n.swgc (reply foto)\n.swgc (reply video) + caption` }, { quoted: m });
-      
-      await sock.sendMessage(id, {
-        text: text,
-        backgroundColor: "#0a0a0a",
-        font: Math.floor(Math.random() * 6), // font random biar keren kayak SW
-      });
+      // FOTO
+      let media = await q.download()
+      await sock.sendMessage(status, { image: media, caption: teks, ...opt })
+      reply(`✅ SWGC Foto sukses ke ${jidList.length} grup`)
+
+    } else if (/video/.test(mime)) {
+      // VIDEO
+      let media = await q.download()
+      await sock.sendMessage(status, { video: media, caption: teks, mimetype: 'video/mp4', ...opt })
+      reply(`✅ SWGC Video sukses ke ${jidList.length} grup`)
+
+    } else {
+      // TEKS ONLY
+      await sock.sendMessage(status, { 
+        text: teks, 
+        backgroundColor: '#' + Math.floor(Math.random()*16777215).toString(16),
+        font: Math.floor(Math.random()*5),
+        ...opt 
+      })
+      reply(`✅ SWGC Teks sukses ke ${jidList.length} grup`)
     }
 
-    await sock.sendMessage(id, { react: { text: "✅", key: m.key } });
-
-  } catch (err) {
-    console.log("[SWGC ERROR]", err);
-    await sock.sendMessage(id, { text: `Gagal up SWGC: ${err.message}` }, { quoted: m });
+  } catch (e) {
+    console.log(e)
+    reply('❌ Gagal up swgc')
   }
-}
+  break
+    }
