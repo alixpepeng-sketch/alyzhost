@@ -24,8 +24,7 @@ import play from './play.js';
 import swgc from './swgc.js';
 import jpmv1 from './jpmv1.js';
 import asahotak from './asahotak.js';
-import setacc from './setacc.js';
-import acc from './acc.js';
+import antios from './antios.js';
 
 export const commands = {
   menu,
@@ -65,6 +64,5 @@ export const commands = {
   swgc,
   jpmv1,
   asahotak,
-  setacc,
-  acc,
+  antios,
 };
