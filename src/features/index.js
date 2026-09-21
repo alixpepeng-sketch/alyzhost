@@ -1,7 +1,6 @@
 import ai from './ai.js';
 import balikinjf from './balikinjf.js';
 import brat from './brat.js';
-import bratvd from './bratvd.js';
 import fotolive from './fotolive.js';
 import getpp from './getpp.js';
 import { close, open, revoke, setdesk, setnamegroup } from './groupadmin.js';
@@ -25,6 +24,8 @@ import play from './play.js';
 import swgc from './swgc.js';
 import jpmv1 from './jpmv1.js';
 import asahotak from './asahotak.js';
+import setacc from './setacc.js';
+import acc from './acc.js';
 
 export const commands = {
   menu,
@@ -39,7 +40,6 @@ export const commands = {
   sticker,
   s: sticker,
   brat,
-  bratvd,
   setwelcome,
   setleave,
   welcome,
@@ -65,4 +65,6 @@ export const commands = {
   swgc,
   jpmv1,
   asahotak,
+  setacc,
+  acc,
 };
