@@ -22,10 +22,23 @@ export default async function brat(sock, m, args) {
     return reply(sock, m, `Teks terlalu panjang. Maksimal ${MAX_LENGTH} karakter.`);
   }
 
-  const webp = await sharp(Buffer.from(buildBratSvg(text)))
-    .resize(512, 512)
-    .webp({ quality: 90 })
-    .toBuffer();
+  try {
+    const webp = await sharp(Buffer.from(buildBratSvg(text)))
+      .resize(512, 512)
+      .webp({ quality: 90 })
+      .toBuffer();
 
-  return sock.sendMessage(m.key.remoteJid, { sticker: webp }, { quoted: m });
-}
+    return sock.sendMessage(
+      m.key.remoteJid,
+      {
+        sticker: webp,
+        packname: 'ALYZ',
+        author: 'Alyz Bot',
+      },
+      { quoted: m }
+    );
+  } catch (err) {
+    console.error('[brat]', err);
+    return reply(sock, m, 'Gagal membuat sticker brat.');
+  }
+    }
