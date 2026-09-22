@@ -1,34 +1,40 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { getQuoted, reply } from '../utils.js';
 import { logger } from '../logger.js';
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
-function isSpotifyUrl(url) {
-  return /open\.spotify\.com/i.test(String(url || ''));
-}
-
-// Ambil URL dari args.raw / args array / reply
-function extractUrl(m, args) {
-  // 1. args.raw (paling lengkap, dari handler)
-  if (typeof args?.raw === 'string' && args.raw.trim()) {
+function pickUrl(m, args) {
+  if (args && typeof args.raw === 'string' && args.raw.trim()) {
     return args.raw.trim();
   }
-  // 2. args array
   if (Array.isArray(args) && args.length) {
     return args.join(' ').trim();
   }
-  // 3. reply — pakai getQuoted(m), BUKAN getQuoted(m.message)
-  const quoted = getQuoted(m);
-  const quotedText =
-    quoted?.conversation ||
-    quoted?.extendedTextMessage?.text ||
-    quoted?.imageMessage?.caption ||
-    quoted?.videoMessage?.caption ||
-    '';
-  return String(quotedText).trim();
+
+  const msg = m?.message || {};
+  let ctx = null;
+
+  for (const key of Object.keys(msg)) {
+    const v = msg[key];
+    if (v && typeof v === 'object' && v.contextInfo) {
+      ctx = v.contextInfo;
+      break;
+    }
+  }
+
+  if (!ctx?.quotedMessage) return '';
+
+  const q = ctx.quotedMessage;
+  return (
+    q.conversation ||
+    q.extendedTextMessage?.text ||
+    q.imageMessage?.caption ||
+    q.videoMessage?.caption ||
+    q.documentMessage?.caption ||
+    ''
+  ).trim();
 }
 
 async function spotifydl(spotifyUrl) {
@@ -82,7 +88,6 @@ async function spotifydl(spotifyUrl) {
     title: metadata.name || 'Unknown',
     artist: metadata.artists?.map((v) => v.name).join(', ') || '-',
     thumbnail: metadata.album?.images?.[0]?.url,
-    spotify: metadata.external_urls?.spotify || spotifyUrl,
     download: convert.data.url,
   };
 }
@@ -90,28 +95,34 @@ async function spotifydl(spotifyUrl) {
 export default async function playdl(sock, m, args) {
   const from = m.key.remoteJid;
 
-  // DEBUG — hapus setelah fix
-  console.log('[playdl] args.raw =', JSON.stringify(args?.raw));
+  // ==== DEBUG WAJIB — JANGAN DIHAPUS DULU ====
+  console.log('===== PLAYDL =====');
+  console.log('RAW TEXT:', JSON.stringify(m.message?.extendedTextMessage?.text));
+  console.log('ARGS:', JSON.stringify(args));
+  console.log('ARGS.RAW:', JSON.stringify(args?.raw));
 
-  let url = extractUrl(m, args);
-  url = String(url).replace(/[\u200B-\u200D\uFEFF<>"'`\n\r]/g, '').trim();
+  let url = pickUrl(m, args);
+  url = String(url).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
 
-  console.log('[playdl] url =', JSON.stringify(url));
-  console.log('[playdl] isSpotify =', isSpotifyUrl(url));
+  console.log('FINAL URL:', JSON.stringify(url));
+  console.log('MATCH SPOTIFY:', /open\.spotify\.com/i.test(url));
+  console.log('==================');
 
-  if (!url || !isSpotifyUrl(url)) {
-    return reply(
-      sock,
-      m,
-      'Format:\n.playdl <url spotify>\natau reply pesan yang berisi url spotify dengan .playdl'
+  if (!url || !/open\.spotify\.com/i.test(url)) {
+    return sock.sendMessage(
+      from,
+      {
+        text:
+          'Format:\n.playdl <url spotify>\natau reply pesan berisi url spotify dengan .playdl',
+      },
+      { quoted: m }
     );
   }
 
-  await reply(sock, m, 'Memproses lagu...');
+  await sock.sendMessage(from, { text: 'Memproses lagu...' }, { quoted: m });
 
   try {
     const data = await spotifydl(url);
-    console.log('[playdl] download link =', data.download);
 
     if (data.thumbnail) {
       await sock.sendMessage(
@@ -135,6 +146,10 @@ export default async function playdl(sock, m, args) {
     );
   } catch (err) {
     logger.error({ err: err.message }, 'playdl gagal');
-    return reply(sock, m, `Gagal mengunduh: ${err.message}`);
+    await sock.sendMessage(
+      from,
+      { text: `Gagal: ${err.message}` },
+      { quoted: m }
+    );
   }
     }
