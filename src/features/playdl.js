@@ -1,13 +1,34 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { argText, reply } from '../utils.js';
+import { getQuoted, reply } from '../utils.js';
 import { logger } from '../logger.js';
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
 function isSpotifyUrl(url) {
-  return /^https:\/\/open\.spotify\.com\/.*\/\w+/i.test(String(url || ''));
+  return /open\.spotify\.com/i.test(String(url || ''));
+}
+
+// Ambil URL dari args.raw / args array / reply
+function extractUrl(m, args) {
+  // 1. args.raw (paling lengkap, dari handler)
+  if (typeof args?.raw === 'string' && args.raw.trim()) {
+    return args.raw.trim();
+  }
+  // 2. args array
+  if (Array.isArray(args) && args.length) {
+    return args.join(' ').trim();
+  }
+  // 3. reply — pakai getQuoted(m), BUKAN getQuoted(m.message)
+  const quoted = getQuoted(m);
+  const quotedText =
+    quoted?.conversation ||
+    quoted?.extendedTextMessage?.text ||
+    quoted?.imageMessage?.caption ||
+    quoted?.videoMessage?.caption ||
+    '';
+  return String(quotedText).trim();
 }
 
 async function spotifydl(spotifyUrl) {
@@ -66,24 +87,17 @@ async function spotifydl(spotifyUrl) {
   };
 }
 
-// .playdl <url spotify>
 export default async function playdl(sock, m, args) {
   const from = m.key.remoteJid;
-  let url = argText(args).trim();
 
-  if (!url) {
-    const ctx =
-      m.message?.extendedTextMessage?.contextInfo ||
-      m.message?.imageMessage?.contextInfo ||
-      m.message?.videoMessage?.contextInfo;
+  // DEBUG — hapus setelah fix
+  console.log('[playdl] args.raw =', JSON.stringify(args?.raw));
 
-    const quotedText =
-      ctx?.quotedMessage?.conversation ||
-      ctx?.quotedMessage?.extendedTextMessage?.text ||
-      '';
+  let url = extractUrl(m, args);
+  url = String(url).replace(/[\u200B-\u200D\uFEFF<>"'`\n\r]/g, '').trim();
 
-    url = quotedText.trim();
-  }
+  console.log('[playdl] url =', JSON.stringify(url));
+  console.log('[playdl] isSpotify =', isSpotifyUrl(url));
 
   if (!url || !isSpotifyUrl(url)) {
     return reply(
@@ -97,6 +111,7 @@ export default async function playdl(sock, m, args) {
 
   try {
     const data = await spotifydl(url);
+    console.log('[playdl] download link =', data.download);
 
     if (data.thumbnail) {
       await sock.sendMessage(
@@ -122,4 +137,4 @@ export default async function playdl(sock, m, args) {
     logger.error({ err: err.message }, 'playdl gagal');
     return reply(sock, m, `Gagal mengunduh: ${err.message}`);
   }
-}
+    }
