@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { argText, reply } from '../utils.js';
 import { logger } from '../logger.js';
 
-// ---------- Token Cache ----------
 let cachedToken = null;
 let tokenExpiry = 0;
 
@@ -12,7 +11,7 @@ const CLIENT_SECRET = '0e8439a1280a43aba9a5bc0a16f3f009';
 const BASIC_AUTH = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
 
 const http = axios.create({
-  timeout: 8000,
+  timeout: 15000,
   headers: { 'User-Agent': 'AlyzBot/1.0' },
 });
 
@@ -40,26 +39,43 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-async function searchSpotify(query) {
-  const token = await getAccessToken();
-
-  const { data } = await http.get('https://api.spotify.com/v1/search', {
-    params: { q: query, type: 'track', limit: 5 },
-    headers: { Authorization: `Bearer ${token}` },
+async function searchITunes(query) {
+  const { data } = await http.get('https://itunes.apple.com/search', {
+    params: { term: query, media: 'music', limit: 5 },
   });
 
-  return (data.tracks?.items || []).map((item) => ({
-    title: item.name,
-    artist: item.artists.map((a) => a.name).join(', '),
-    link: item.external_urls.spotify,
-    thumbnail: item.album.images?.[0]?.url,
+  return (data.results || []).map((r) => ({
+    title: r.trackName,
+    artist: r.artistName,
+    link: r.trackViewUrl,
+    thumbnail: r.artworkUrl100,
   }));
+}
+
+async function searchSpotify(query) {
+  try {
+    const token = await getAccessToken();
+    const { data } = await http.get('https://api.spotify.com/v1/search', {
+      params: { q: query, type: 'track', limit: 5 },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return (data.tracks?.items || []).map((item) => ({
+      title: item.name,
+      artist: item.artists.map((a) => a.name).join(', '),
+      link: item.external_urls.spotify,
+      thumbnail: item.album.images?.[0]?.url,
+    }));
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Spotify gagal, fallback ke iTunes');
+    return searchITunes(query);
+  }
 }
 
 async function spotifyDownload(url) {
   const client = axios.create({
     baseURL: 'https://spotisongdownloader.to',
-    timeout: 20000,
+    timeout: 25000,
     headers: {
       'Accept-Encoding': 'gzip, deflate, br',
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -97,8 +113,6 @@ async function spotifyDownload(url) {
   };
 }
 
-// .play <judul>         -> cari 5 lagu di Spotify
-// .play <url spotify>   -> download langsung
 export default async function play(sock, m, args) {
   const input = argText(args).trim();
   const from = m.key.remoteJid;
@@ -107,7 +121,6 @@ export default async function play(sock, m, args) {
     return reply(sock, m, 'Format:\n.play <judul lagu>\n.play <url spotify>');
   }
 
-  // ---- URL Spotify -> download ----
   if (isSpotifyUrl(input)) {
     await reply(sock, m, 'Memproses lagu...');
 
@@ -134,12 +147,11 @@ export default async function play(sock, m, args) {
       );
       return;
     } catch (err) {
-      logger.error({ err }, 'play download gagal');
+      logger.error({ err: err.message }, 'play download gagal');
       return reply(sock, m, 'Gagal mengunduh lagu. Coba lagi.');
     }
   }
 
-  // ---- Teks -> search ----
   try {
     const results = await searchSpotify(input);
     if (!results.length) return reply(sock, m, 'Lagu tidak ditemukan.');
@@ -151,7 +163,7 @@ export default async function play(sock, m, args) {
     const text = `╭─── SPOTIFY SEARCH ───╮\n\n${lines}\n\n╰──────────────────────╯\n\nKirim .play <url spotify> untuk mengunduh.`;
     return reply(sock, m, text);
   } catch (err) {
-    logger.error({ err }, 'play search gagal');
-    return reply(sock, m, 'Gagal mencari lagu.');
+    logger.error({ err: err.message }, 'play search gagal');
+    return reply(sock, m, `Gagal mencari lagu: ${err.message}`);
   }
-  }
+    }
