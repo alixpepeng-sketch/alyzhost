@@ -1,37 +1,157 @@
-import yts from 'yt-search';
-import ytdl from '@distube/ytdl-core';
-import fs from 'fs';
+import axios from 'axios';
+import crypto from 'node:crypto';
+import { argText, reply } from '../utils.js';
+import { logger } from '../logger.js';
 
-export default async function play(sock, m, args) {
-  const chat = m.key.remoteJid;
-  const query = args.join(' ');
-  if (!query) return sock.sendMessage(chat, { text: `Contoh:.play justfrend kok jatuh suka` }, { quoted: m });
+// ---------- Token Cache ----------
+let cachedToken = null;
+let tokenExpiry = 0;
 
-  try {
-    await sock.sendMessage(chat, { react: { text: '🔎', key: m.key } });
+const CLIENT_ID = 'acc6302297e040aeb6e4ac1fbdfd62c3';
+const CLIENT_SECRET = '0e8439a1280a43aba9a5bc0a16f3f009';
+const BASIC_AUTH = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
 
-    const search = await yts(query);
-    const video = search.videos[0];
-    if (!video) return sock.sendMessage(chat, { text: `Gak ketemu: ${query}` }, { quoted: m });
+const http = axios.create({
+  timeout: 8000,
+  headers: { 'User-Agent': 'AlyzBot/1.0' },
+});
 
-    await sock.sendMessage(chat, { text: `*Nunggu bentar...*\n\n> ${video.title}\n> ${video.url}` }, { quoted: m });
-
-    const fileName = `./play_${Date.now()}.mp3`;
-    const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
-    const write = fs.createWriteStream(fileName);
-    stream.pipe(write);
-    await new Promise(res => write.on('finish', res));
-
-    await sock.sendMessage(chat, {
-      audio: fs.readFileSync(fileName),
-      mimetype: 'audio/mpeg',
-      fileName: `${video.title}.mp3`
-    }, { quoted: m });
-
-    fs.unlinkSync(fileName);
-    await sock.sendMessage(chat, { react: { text: '✅', key: m.key } });
-
-  } catch (e) {
-    await sock.sendMessage(chat, { text: `Gagal play: ${e.message}` }, { quoted: m });
-  }
+function isSpotifyUrl(url) {
+  return /^https:\/\/open\.spotify\.com\/.*\/\w+/i.test(String(url || ''));
 }
+
+async function getAccessToken() {
+  const now = Date.now();
+  if (cachedToken && now < tokenExpiry) return cachedToken;
+
+  const { data } = await http.post(
+    'https://accounts.spotify.com/api/token',
+    'grant_type=client_credentials',
+    {
+      headers: {
+        Authorization: `Basic ${BASIC_AUTH}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
+  );
+
+  cachedToken = data.access_token;
+  tokenExpiry = now + (data.expires_in - 60) * 1000;
+  return cachedToken;
+}
+
+async function searchSpotify(query) {
+  const token = await getAccessToken();
+
+  const { data } = await http.get('https://api.spotify.com/v1/search', {
+    params: { q: query, type: 'track', limit: 5 },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  return (data.tracks?.items || []).map((item) => ({
+    title: item.name,
+    artist: item.artists.map((a) => a.name).join(', '),
+    link: item.external_urls.spotify,
+    thumbnail: item.album.images?.[0]?.url,
+  }));
+}
+
+async function spotifyDownload(url) {
+  const client = axios.create({
+    baseURL: 'https://spotisongdownloader.to',
+    timeout: 20000,
+    headers: {
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      referer: 'https://spotisongdownloader.to',
+      cookie: `PHPSESSID=${crypto.randomBytes(16).toString('hex')}`,
+    },
+  });
+
+  const [metaRes] = await Promise.all([
+    client.get('/api/composer/spotify/xsingle_track.php', {
+      params: { url },
+    }),
+    client.post('/track.php').catch(() => {}),
+  ]);
+
+  const meta = metaRes.data;
+
+  const { data: dl } = await client.post(
+    '/api/composer/spotify/ssdw23456ytrfds.php',
+    new URLSearchParams({
+      url,
+      zip_download: 'false',
+      quality: 'm4a',
+    }).toString()
+  );
+
+  if (!dl || !dl.dlink) throw new Error('Download link tidak ditemukan');
+
+  return {
+    title: meta.song_name || 'Unknown',
+    artist: meta.artist || 'Unknown',
+    cover: meta.img,
+    download: dl.dlink,
+    source: url,
+  };
+}
+
+// .play <judul>         -> cari 5 lagu di Spotify
+// .play <url spotify>   -> download langsung
+export default async function play(sock, m, args) {
+  const input = argText(args).trim();
+  const from = m.key.remoteJid;
+
+  if (!input) {
+    return reply(sock, m, 'Format:\n.play <judul lagu>\n.play <url spotify>');
+  }
+
+  // ---- URL Spotify -> download ----
+  if (isSpotifyUrl(input)) {
+    await reply(sock, m, 'Memproses lagu...');
+
+    try {
+      const data = await spotifyDownload(input);
+
+      await sock.sendMessage(
+        from,
+        {
+          image: { url: data.cover },
+          caption: `Judul: ${data.title}\nArtis: ${data.artist}`,
+        },
+        { quoted: m }
+      );
+
+      await sock.sendMessage(
+        from,
+        {
+          audio: { url: data.download },
+          mimetype: 'audio/mp4',
+          fileName: `${data.title}.m4a`,
+        },
+        { quoted: m }
+      );
+      return;
+    } catch (err) {
+      logger.error({ err }, 'play download gagal');
+      return reply(sock, m, 'Gagal mengunduh lagu. Coba lagi.');
+    }
+  }
+
+  // ---- Teks -> search ----
+  try {
+    const results = await searchSpotify(input);
+    if (!results.length) return reply(sock, m, 'Lagu tidak ditemukan.');
+
+    const lines = results
+      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.artist}\n   ${r.link}`)
+      .join('\n\n');
+
+    const text = `╭─── SPOTIFY SEARCH ───╮\n\n${lines}\n\n╰──────────────────────╯\n\nKirim .play <url spotify> untuk mengunduh.`;
+    return reply(sock, m, text);
+  } catch (err) {
+    logger.error({ err }, 'play search gagal');
+    return reply(sock, m, 'Gagal mencari lagu.');
+  }
+  }
