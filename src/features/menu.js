@@ -51,7 +51,7 @@ export default async function menu(sock, m) {
 ╰───────────────╯`;
 
   await sock.sendMessage(m.key.remoteJid, {
-    image: { url: 'https://files.catbox.moe/c4rt8u.jpeg' },
+    image: { url: 'https://files.catbox.moe/1849ng.jpg' },
     caption: "```" + text + "```"
   }, { quoted: m });
 }
