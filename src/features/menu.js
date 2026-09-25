@@ -10,19 +10,21 @@ export default async function menu(sock, m) {
   } catch {}
 
   const text = `╭─── XALYZ BOT ───╮
-
- 自分を過大評価しては
- いけません。
- 高い山でさえ傲慢では
- ないことを覚えて。
- その山より高い空が
- あるからです。
- @AlyzBotWa
-
+│
+│ 自分を過大評価しては
+│ いけません。高い山で
+│ さえ傲慢ではないこと
+│ を覚えておいて下さい
+│ なぜなら、その山より
+│ もさらに高い空が
+│ 存在するからです。
+│ @AlyzBotWa
+│
 │ Owner : Alyz
 │ User : ${m.pushName || 'User'}
 │ Status : ${botStatus}
-│ Total : 35 Fitur
+│
+│ Total: 35 Fitur
 │
 │ ◦ GROUP
 │ •.tagall
@@ -31,28 +33,49 @@ export default async function menu(sock, m) {
 │ •.acc on/off
 │ •.acc cek
 │ •.kickall
-│ •.open /.close
+│ •.open
+│ •.close
 │ •.setnamegroup
 │ •.setdesk
 │ •.revoke
+│ •.swgc
+│ •.jpmv1
+│ •.asahotak
+│ •.antios on/off
 │
 │ ◦ SETTINGS
 │ •.antilink
 │ •.adminonly
 │ •.setwelcome
+│ •.setleave
 │ •.welcome
+│ •.leave
 │
 │ ◦ TOOLS
-│ •.ai.sticker.toimg
-│ •.tiktok.brat.bratvd
-│ •.play.playdl.rvo
+│ •.ai
+│ •.sticker
+│ •.toimg
+│ •.tomp3
+│ •.tiktok
+│ •.removebg
+│ •.brat
+│ •.bratvd
+│ •.getpp
+│ •.rvo
+│ •.toptv
+│ •.fotolive
+│ •.balikinjf
+│ •.play
+│ •.playdl
 │
 │ ◦ OWNER
-│ •.selfmode.amsend
-╰─────────────────╯`;
+│ •.selfmode
+│ •.amsend
+│ •.amverif
+╰───────────────╯`;
 
   await sock.sendMessage(m.key.remoteJid, {
     image: { url: 'https://files.catbox.moe/1849ng.jpg' },
-    caption: text
+    caption: "\`\`\`" + text + "\`\`\`"
   }, { quoted: m });
-    }
+}
