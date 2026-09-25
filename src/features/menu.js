@@ -1,5 +1,7 @@
 export default async function menu(sock, m) {
   const text = `╭─── XALYZ BOT ───╮
+│ 自分を過大評価してはいけません。高い山でさえ傲慢ではないことを覚えておいてください。なぜなら、その山よりもさらに高い空が存在するからです。@AlyzBotWa
+│
 │ Total: 35 Fitur
 │
 │ ◦ GROUP
