@@ -1,5 +1,5 @@
 export default async function menu(sock, m) {
-  const text = `╭─── XVSTEER ALYZ BOT ───╮
+  const text = `╭─── XALYZ BOT ───╮
 │ Total: 35 Fitur
 │
 │ ◦ GROUP
